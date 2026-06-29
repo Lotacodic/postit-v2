@@ -2,9 +2,15 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import client from "../api/client";
 
+interface PostAuthor {
+  _id: string;
+  username: string;
+  avatar: string;
+}
+
 interface Post {
   _id: string;
-  userId: string;
+  userId: PostAuthor;
   postit: string;
   img: string;
   file: string[];
@@ -110,12 +116,15 @@ export default function FeedPage() {
           <div style={styles.feed}>
             {posts.map((post) => (
               <div key={post._id} style={styles.card}>
+                <div style={styles.cardHeader}>
+                  <span style={styles.author}>@{post.userId.username}</span>
+                </div>
                 <p style={styles.postText}>{post.postit}</p>
                 <div style={styles.cardFooter}>
                   <span style={styles.timestamp}>
                     {new Date(post.createdAt).toLocaleDateString()}
                   </span>
-                  {post.userId === userId && (
+                  {post.userId._id === userId && (
                     <button
                       style={styles.deleteBtn}
                       onClick={() => handleDelete(post._id)}
@@ -217,6 +226,14 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "24px",
     borderRadius: "12px",
     boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+  },
+  cardHeader: {
+    marginBottom: "8px",
+  },
+  author: {
+    fontSize: "13px",
+    fontWeight: 700,
+    color: "#BA7517",
   },
   postText: {
     fontSize: "16px",
