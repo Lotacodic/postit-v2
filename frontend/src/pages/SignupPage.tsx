@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import client from "../api/client";
 
 interface SignupResponse {
@@ -10,7 +10,6 @@ interface SignupResponse {
   avatar: string;
 }
 
-// This describes the shape of our form — one object holds all three fields
 interface SignupForm {
   username: string;
   email: string;
@@ -18,44 +17,40 @@ interface SignupForm {
 }
 
 export default function SignupPage() {
-  // One object controls all form fields (Concept 2 from the lesson)
   const [form, setForm] = useState<SignupForm>({
     username: "",
     email: "",
     password: "",
   });
 
-  // UI state — tracks loading spinner and error message
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  // Pull login() out of our AuthContext — no prop drilling needed
-  const { login } = useAuth();
+  const navigate = useNavigate();
 
-  // One handler for ALL inputs — reads the field name from the element itself
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // Prevent browser page refresh on submit
-    setLoading(true);   // Show loading state
-    setError(null);     // Clear any previous error
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
 
     try {
-      // POST /auth/signup with our form data
       const { data } = await client.post<SignupResponse>("/auth/signup", form);
-      // Save token + user into AuthContext (and localStorage)
-      login(data);
+      setSuccess(`Account created! Welcome, ${data.username}. Redirecting to login...`);
+      setTimeout(() => navigate("/login"), 2000);
     } catch (err: unknown) {
-      // Show a human-readable error message
       if (err instanceof Error) {
         setError(err.message);
       } else {
         setError("Signup failed. Please try again.");
       }
     } finally {
-      setLoading(false); // Always turn off loading, success or failure
+      setLoading(false);
     }
   };
 
@@ -65,16 +60,16 @@ export default function SignupPage() {
         <h1 style={styles.title}>Create Account</h1>
         <p style={styles.subtitle}>Join Postit and share your world</p>
 
-        {/* Error banner — only renders if error state is set */}
         {error && <p style={styles.error}>{error}</p>}
+        {success && <p style={styles.success}>{success}</p>}
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <label style={styles.label}>Username</label>
           <input
             style={styles.input}
             type="text"
-            name="username"        
-            value={form.username}  
+            name="username"
+            value={form.username}
             onChange={handleChange}
             placeholder="yourname"
             required
@@ -116,7 +111,6 @@ export default function SignupPage() {
   );
 }
 
-// Temporary styles using design tokens
 const styles: Record<string, React.CSSProperties> = {
   page: {
     minHeight: "100vh",
@@ -176,6 +170,14 @@ const styles: Record<string, React.CSSProperties> = {
   error: {
     backgroundColor: "#fee2e2",
     color: "#dc2626",
+    padding: "12px",
+    borderRadius: "8px",
+    fontSize: "14px",
+    marginBottom: "16px",
+  },
+  success: {
+    backgroundColor: "#d1fae5",
+    color: "#065f46",
     padding: "12px",
     borderRadius: "8px",
     fontSize: "14px",

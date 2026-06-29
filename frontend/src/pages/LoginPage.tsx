@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import client from "../api/client";
 
@@ -26,6 +27,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   const { login } = useAuth();
+  const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -39,11 +41,12 @@ export default function LoginPage() {
     try {
       const { data } = await client.post<AuthResponse>("/auth/login", form);
       login(data);
+      navigate("/feed");
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Login failed. Please check your credentials.");
+        setError("Login failed. Please try again.");
       }
     } finally {
       setLoading(false);
