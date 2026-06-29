@@ -20,14 +20,21 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [username, setUsername] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(
+    localStorage.getItem("userId")
+  );
+  const [username, setUsername] = useState<string | null>(
+    localStorage.getItem("username")
+  );
   const [token, setToken] = useState<string | null>(
     localStorage.getItem("token")
   );
 
   const login = (data: AuthResponse) => {
+    // Persist all identity fields so state survives a hard refresh
     localStorage.setItem("token", data.token);
+    localStorage.setItem("userId", data.userId);
+    localStorage.setItem("username", data.username);
     setToken(data.token);
     setUserId(data.userId);
     setUsername(data.username);
@@ -35,6 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("username");
     setToken(null);
     setUserId(null);
     setUsername(null);
