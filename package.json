@@ -1,0 +1,16 @@
+{
+  "name": "postit-v2",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
+  },
+  "description": "Full-stack Post-it application monorepo",
+  "author": "Lotacodic"
+}
