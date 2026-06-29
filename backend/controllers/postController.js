@@ -42,7 +42,9 @@ const getPost = async (req, res, next) => {
 // GET ALL POSTS
 const getAllPosts = async (req, res, next) => {
   try {
-    const posts = await Post.find({ isDeleted: false });
+    const posts = await Post.find({ isDeleted: false })
+      .sort({ createdAt: -1 })
+      .populate("userId", "username avatar");
 
     return res.status(200).json({
       message: "Posts fetched successfully.",
