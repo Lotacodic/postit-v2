@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import client from "../api/client";
-import { AuthResponse } from "../types/index";
+
+interface AuthResponse {
+  message: string;
+  token: string;
+  userId: string;
+  username: string;
+  email: string;
+  avatar: string;
+}
 
 interface LoginForm {
   email: string;

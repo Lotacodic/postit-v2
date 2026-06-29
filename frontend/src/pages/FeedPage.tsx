@@ -1,12 +1,12 @@
 import { useAuth } from "../context/AuthContext";
 
 export default function FeedPage() {
-  const { user, logout } = useAuth();
+  const { username, logout } = useAuth();
 
   return (
     <div style={{ padding: "48px", fontFamily: "sans-serif" }}>
       <h1 style={{ color: "#BA7517" }}>Postit Feed</h1>
-      <p>Welcome, {user?.username ?? "friend"} 👋</p>
+      <p>Welcome, {username ?? "friend"} 👋</p>
       <button
         onClick={logout}
         style={{

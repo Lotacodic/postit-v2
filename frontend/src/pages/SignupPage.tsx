@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import client from "../api/client";
-import { SignupResponse } from "../types/index";
+
+interface SignupResponse {
+  message: string;
+  userId: string;
+  username: string;
+  email: string;
+  avatar: string;
+}
 
 // This describes the shape of our form — one object holds all three fields
 interface SignupForm {
