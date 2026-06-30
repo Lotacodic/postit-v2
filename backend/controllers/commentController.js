@@ -1,11 +1,9 @@
 const Comment = require("../models/Comment");
 
 // CREATE COMMENT
-// CREATE COMMENT
 const createComment = async (req, res, next) => {
   try {
     const Post = require("../models/Post");
-
     const post = await Post.findOne({ _id: req.params.postId, isDeleted: false });
     if (!post) {
       return res.status(404).json({ message: "Post not found." });
@@ -19,9 +17,16 @@ const createComment = async (req, res, next) => {
 
     const savedComment = await newComment.save();
 
+    // Re-fetch with author populated so the response matches the GET shape.
+    // The client needs username immediately to render the new comment without a refetch.
+    const populatedComment = await Comment.findById(savedComment._id).populate(
+      "userId",
+      "username avatar"
+    );
+
     return res.status(201).json({
       message: "Comment created successfully.",
-      comment: savedComment,
+      comment: populatedComment,
     });
   } catch (err) {
     next(err);
@@ -34,7 +39,7 @@ const getPostComments = async (req, res, next) => {
     const comments = await Comment.find({
       postId: req.params.postId,
       isDeleted: false,
-    });
+    }).populate("userId", "username avatar"); // author identity needed for display
 
     return res.status(200).json({
       message: "Comments fetched successfully.",
@@ -53,7 +58,6 @@ const updateComment = async (req, res, next) => {
       { $set: { text: req.body.text } },
       { new: true }
     );
-
     return res.status(200).json({
       message: "Comment updated successfully.",
       comment: updatedComment,
@@ -71,7 +75,6 @@ const deleteComment = async (req, res, next) => {
       { $set: { isDeleted: true } },
       { new: true }
     );
-
     return res.status(200).json({
       message: "Comment deleted successfully.",
     });
