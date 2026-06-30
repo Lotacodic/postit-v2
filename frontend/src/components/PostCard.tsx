@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import type { Post, Comment } from "../types";
-import { getPostComments } from "../api/comments";
+import { getPostComments, createComment } from "../api/comments";
 
 interface Props {
   post: Post;
@@ -12,7 +12,11 @@ export default function PostCard({ post, currentUserId, onDelete }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
-  // Tracks whether we've fetched at least once so subsequent toggles skip the network call.
+  const [newComment, setNewComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  // Mirrors post.commentCount locally so we can increment it on creation
+  // without waiting for a full feed refetch.
+  const [localCommentCount, setLocalCommentCount] = useState(post.commentCount);
   const hasFetched = useRef(false);
 
   const handleToggle = async () => {
@@ -31,6 +35,23 @@ export default function PostCard({ post, currentUserId, onDelete }: Props) {
     setIsExpanded((prev) => !prev);
   };
 
+  const handleCommentCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+    setSubmitting(true);
+
+    try {
+      const created = await createComment(post._id, newComment);
+      setComments((prev) => [...prev, created]);
+      setLocalCommentCount((prev) => prev + 1);
+      setNewComment("");
+    } catch {
+      // Could surface an error state here in a future iteration.
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div style={styles.card}>
       <div style={styles.cardHeader}>
@@ -40,8 +61,8 @@ export default function PostCard({ post, currentUserId, onDelete }: Props) {
       <div style={styles.cardFooter}>
         <button style={styles.commentToggle} onClick={handleToggle}>
           {new Date(post.createdAt).toLocaleDateString()} ·{" "}
-          {post.commentCount}{" "}
-          {post.commentCount === 1 ? "comment" : "comments"}
+          {localCommentCount}{" "}
+          {localCommentCount === 1 ? "comment" : "comments"}
         </button>
         {post.userId._id === currentUserId && (
           <button style={styles.deleteBtn} onClick={() => onDelete(post._id)}>
@@ -66,6 +87,23 @@ export default function PostCard({ post, currentUserId, onDelete }: Props) {
               </div>
             ))
           )}
+
+          <form onSubmit={handleCommentCreate} style={styles.commentForm}>
+            <input
+              style={styles.commentInput}
+              type="text"
+              placeholder="Write a comment..."
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+            />
+            <button
+              style={styles.commentSubmit}
+              type="submit"
+              disabled={submitting}
+            >
+              {submitting ? "..." : "Reply"}
+            </button>
+          </form>
         </div>
       )}
     </div>
@@ -144,5 +182,29 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#374151",
     margin: 0,
     lineHeight: 1.5,
+  },
+  commentForm: {
+    display: "flex",
+    gap: "8px",
+    marginTop: "4px",
+  },
+  commentInput: {
+    flex: 1,
+    padding: "8px 12px",
+    fontSize: "14px",
+    border: "1px solid #d1d5db",
+    borderRadius: "8px",
+    outline: "none",
+    fontFamily: "sans-serif",
+  },
+  commentSubmit: {
+    padding: "8px 16px",
+    fontSize: "13px",
+    fontWeight: 700,
+    backgroundColor: "#BA7517",
+    color: "#fff",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
   },
 };
