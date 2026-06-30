@@ -105,7 +105,9 @@ export default function FeedPage() {
                 <p style={styles.postText}>{post.postit}</p>
                 <div style={styles.cardFooter}>
                   <span style={styles.timestamp}>
-                    {new Date(post.createdAt).toLocaleDateString()}
+                    {new Date(post.createdAt).toLocaleDateString()} ·{" "}
+                    {post.commentCount}{" "}
+                    {post.commentCount === 1 ? "comment" : "comments"}
                   </span>
                   {post.userId._id === userId && (
                     <button
