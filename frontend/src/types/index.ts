@@ -1,3 +1,11 @@
+// A trimmed-down User shape returned by .populate("userId", "username avatar").
+// Reused wherever the backend populates an author reference.
+export interface PopulatedAuthor {
+  _id: string
+  username: string
+  avatar: string
+}
+
 export interface User {
   _id: string
   username: string
@@ -20,7 +28,7 @@ export interface FetchedUser {
 
 export interface Post {
   _id: string
-  userId: string
+  userId: PopulatedAuthor
   postit: string
   img: string
   file: string[]
@@ -33,7 +41,7 @@ export interface Post {
 export interface Comment {
   _id: string
   postId: string
-  userId: string
+  userId: PopulatedAuthor
   text: string
   isDeleted: boolean
   createdAt: string
