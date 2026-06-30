@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import client from "../api/client";
 import type { Post } from "../types";
+import PostCard from "../components/PostCard";
 
 interface PostsResponse {
   message: string;
@@ -98,27 +99,12 @@ export default function FeedPage() {
         ) : (
           <div style={styles.feed}>
             {posts.map((post) => (
-              <div key={post._id} style={styles.card}>
-                <div style={styles.cardHeader}>
-                  <span style={styles.author}>@{post.userId.username}</span>
-                </div>
-                <p style={styles.postText}>{post.postit}</p>
-                <div style={styles.cardFooter}>
-                  <span style={styles.timestamp}>
-                    {new Date(post.createdAt).toLocaleDateString()} ·{" "}
-                    {post.commentCount}{" "}
-                    {post.commentCount === 1 ? "comment" : "comments"}
-                  </span>
-                  {post.userId._id === userId && (
-                    <button
-                      style={styles.deleteBtn}
-                      onClick={() => handleDelete(post._id)}
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-              </div>
+              <PostCard
+                key={post._id}
+                post={post}
+                currentUserId={userId}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         )}
@@ -205,45 +191,6 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: "16px",
-  },
-  card: {
-    backgroundColor: "#fff",
-    padding: "24px",
-    borderRadius: "12px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-  },
-  cardHeader: {
-    marginBottom: "8px",
-  },
-  author: {
-    fontSize: "13px",
-    fontWeight: 700,
-    color: "#BA7517",
-  },
-  postText: {
-    fontSize: "16px",
-    color: "#111827",
-    margin: "0 0 16px",
-    lineHeight: 1.6,
-  },
-  cardFooter: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  timestamp: {
-    fontSize: "13px",
-    color: "#9ca3af",
-  },
-  deleteBtn: {
-    padding: "6px 12px",
-    fontSize: "13px",
-    fontWeight: 600,
-    backgroundColor: "transparent",
-    color: "#dc2626",
-    border: "1px solid #dc2626",
-    borderRadius: "6px",
-    cursor: "pointer",
   },
   error: {
     backgroundColor: "#fee2e2",
