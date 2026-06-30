@@ -1,24 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import client from "../api/client";
-
-interface PostAuthor {
-  _id: string;
-  username: string;
-  avatar: string;
-}
-
-interface Post {
-  _id: string;
-  userId: PostAuthor;
-  postit: string;
-  img: string;
-  file: string[];
-  likes: string[];
-  isDeleted: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { Post } from "../types";
 
 interface PostsResponse {
   message: string;
