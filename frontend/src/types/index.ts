@@ -33,6 +33,7 @@ export interface Post {
   img: string
   file: string[]
   likes: string[]
+  commentCount: number
   isDeleted: boolean
   createdAt: string
   updatedAt: string
