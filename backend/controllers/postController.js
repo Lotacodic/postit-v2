@@ -42,9 +42,56 @@ const getPost = async (req, res, next) => {
 // GET ALL POSTS
 const getAllPosts = async (req, res, next) => {
   try {
-    const posts = await Post.find({ isDeleted: false })
-      .sort({ createdAt: -1 })
-      .populate("userId", "username avatar");
+    const posts = await Post.aggregate([
+      { $match: { isDeleted: false } },
+      { $sort: { createdAt: -1 } },
+      {
+        $lookup: {
+          from: "comments",
+          localField: "_id",
+          foreignField: "postId",
+          as: "comments",
+        },
+      },
+      {
+        $addFields: {
+          commentCount: {
+            $size: {
+              $filter: {
+                input: "$comments",
+                as: "comment",
+                cond: { $eq: ["$$comment.isDeleted", false] },
+              },
+            },
+          },
+        },
+      },
+      { $project: { comments: 0 } }, // drop the raw array; we only needed the count
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "userId",
+        },
+      },
+      { $unwind: "$userId" },
+      {
+        $project: {
+          "userId.username": 1,
+          "userId.avatar": 1,
+          "userId._id": 1,
+          postit: 1,
+          img: 1,
+          file: 1,
+          likes: 1,
+          isDeleted: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          commentCount: 1,
+        },
+      },
+    ]);
 
     return res.status(200).json({
       message: "Posts fetched successfully.",
