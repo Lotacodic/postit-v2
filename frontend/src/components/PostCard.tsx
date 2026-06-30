@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import type { Post, Comment } from "../types";
 import { getPostComments, createComment } from "../api/comments";
+import { likePost } from "../api/posts";
 
 interface Props {
   post: Post;
@@ -14,10 +15,12 @@ export default function PostCard({ post, currentUserId, onDelete }: Props) {
   const [loadingComments, setLoadingComments] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  // Mirrors post.commentCount locally so we can increment it on creation
-  // without waiting for a full feed refetch.
   const [localCommentCount, setLocalCommentCount] = useState(post.commentCount);
+  // Mirrors post.likes locally so like/unlike updates instantly without a feed refetch.
+  const [localLikes, setLocalLikes] = useState<string[]>(post.likes);
   const hasFetched = useRef(false);
+
+  const likedByMe = currentUserId ? localLikes.includes(currentUserId) : false;
 
   const handleToggle = async () => {
     if (!hasFetched.current) {
@@ -33,6 +36,26 @@ export default function PostCard({ post, currentUserId, onDelete }: Props) {
       }
     }
     setIsExpanded((prev) => !prev);
+  };
+
+  const handleLike = async () => {
+    if (!currentUserId) return;
+    // Optimistically toggle before the network round trip.
+    setLocalLikes((prev) =>
+      prev.includes(currentUserId)
+        ? prev.filter((id) => id !== currentUserId)
+        : [...prev, currentUserId]
+    );
+    try {
+      await likePost(post._id);
+    } catch {
+      // Roll back the optimistic update on failure.
+      setLocalLikes((prev) =>
+        prev.includes(currentUserId)
+          ? prev.filter((id) => id !== currentUserId)
+          : [...prev, currentUserId]
+      );
+    }
   };
 
   const handleCommentCreate = async (e: React.FormEvent) => {
@@ -64,11 +87,23 @@ export default function PostCard({ post, currentUserId, onDelete }: Props) {
           {localCommentCount}{" "}
           {localCommentCount === 1 ? "comment" : "comments"}
         </button>
-        {post.userId._id === currentUserId && (
-          <button style={styles.deleteBtn} onClick={() => onDelete(post._id)}>
-            Delete
+        <div style={styles.actions}>
+          <button
+            style={styles.likeBtn}
+            onClick={handleLike}
+            disabled={!currentUserId}
+          >
+            {likedByMe ? "❤️" : "🤍"} {localLikes.length}
           </button>
-        )}
+          {post.userId._id === currentUserId && (
+            <button
+              style={styles.deleteBtn}
+              onClick={() => onDelete(post._id)}
+            >
+              Delete
+            </button>
+          )}
+        </div>
       </div>
 
       {isExpanded && (
@@ -144,6 +179,19 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 0,
     cursor: "pointer",
   },
+  actions: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+  likeBtn: {
+    fontSize: "13px",
+    background: "none",
+    border: "none",
+    padding: "4px 8px",
+    cursor: "pointer",
+    borderRadius: "6px",
+  },
   deleteBtn: {
     padding: "6px 12px",
     fontSize: "13px",
@@ -184,7 +232,8 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.5,
   },
   commentForm: {
-    display: "flex",
+  
+  display: "flex",
     gap: "8px",
     marginTop: "4px",
   },
