@@ -61,8 +61,8 @@ export default function FeedPage() {
       const { data } = await client.post<CreatePostResponse>("/posts", {
         postit: newPost,
       });
-      setPosts([data.post, ...posts]);
       setNewPost("");
+      await fetchPosts();
     } catch {
       setError("Failed to create post.");
     } finally {

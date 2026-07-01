@@ -2,25 +2,36 @@ import { useState, useRef } from "react";
 import type { Post, Comment } from "../types";
 import { getPostComments, createComment } from "../api/comments";
 import { likePost } from "../api/posts";
+import { followUser, unfollowUser } from "../api/users";
 
 interface Props {
   post: Post;
   currentUserId: string | null;
+  followings: string[];
   onDelete: (postId: string) => void;
+  onFollowChange: (targetUserId: string, isNowFollowing: boolean) => void;
 }
 
-export default function PostCard({ post, currentUserId, onDelete }: Props) {
+export default function PostCard({
+  post,
+  currentUserId,
+  followings,
+  onDelete,
+  onFollowChange,
+}: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [localCommentCount, setLocalCommentCount] = useState(post.commentCount);
-  // Mirrors post.likes locally so like/unlike updates instantly without a feed refetch.
   const [localLikes, setLocalLikes] = useState<string[]>(post.likes);
   const hasFetched = useRef(false);
 
   const likedByMe = currentUserId ? localLikes.includes(currentUserId) : false;
+  const isOwnPost = post.userId._id === currentUserId;
+  // Derived from parent's followings so toggling one card updates all cards for the same user.
+  const isFollowing = currentUserId ? followings.includes(post.userId._id) : false;
 
   const handleToggle = async () => {
     if (!hasFetched.current) {
@@ -40,7 +51,6 @@ export default function PostCard({ post, currentUserId, onDelete }: Props) {
 
   const handleLike = async () => {
     if (!currentUserId) return;
-    // Optimistically toggle before the network round trip.
     setLocalLikes((prev) =>
       prev.includes(currentUserId)
         ? prev.filter((id) => id !== currentUserId)
@@ -55,6 +65,21 @@ export default function PostCard({ post, currentUserId, onDelete }: Props) {
           ? prev.filter((id) => id !== currentUserId)
           : [...prev, currentUserId]
       );
+    }
+  };
+
+  const handleFollow = async () => {
+    if (!currentUserId) return;
+    try {
+      if (isFollowing) {
+        await unfollowUser(post.userId._id);
+        onFollowChange(post.userId._id, false);
+      } else {
+        await followUser(post.userId._id);
+        onFollowChange(post.userId._id, true);
+      }
+    } catch {
+      // Follow state stays as-is on failure — no optimistic update to roll back.
     }
   };
 
@@ -79,6 +104,14 @@ export default function PostCard({ post, currentUserId, onDelete }: Props) {
     <div style={styles.card}>
       <div style={styles.cardHeader}>
         <span style={styles.author}>@{post.userId.username}</span>
+        {!isOwnPost && currentUserId && (
+          <button
+            style={isFollowing ? styles.followingBtn : styles.followBtn}
+            onClick={handleFollow}
+          >
+            {isFollowing ? "Following" : "Follow"}
+          </button>
+        )}
       </div>
       <p style={styles.postText}>{post.postit}</p>
       <div style={styles.cardFooter}>
@@ -95,7 +128,7 @@ export default function PostCard({ post, currentUserId, onDelete }: Props) {
           >
             {likedByMe ? "❤️" : "🤍"} {localLikes.length}
           </button>
-          {post.userId._id === currentUserId && (
+          {isOwnPost && (
             <button
               style={styles.deleteBtn}
               onClick={() => onDelete(post._id)}
@@ -153,12 +186,35 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
   },
   cardHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: "8px",
   },
   author: {
     fontSize: "13px",
     fontWeight: 700,
     color: "#BA7517",
+  },
+  followBtn: {
+    padding: "4px 12px",
+    fontSize: "12px",
+    fontWeight: 600,
+    backgroundColor: "#BA7517",
+    color: "#fff",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+  },
+  followingBtn: {
+    padding: "4px 12px",
+    fontSize: "12px",
+    fontWeight: 600,
+    backgroundColor: "transparent",
+    color: "#BA7517",
+    border: "1px solid #BA7517",
+    borderRadius: "6px",
+    cursor: "pointer",
   },
   postText: {
     fontSize: "16px",
@@ -232,8 +288,7 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.5,
   },
   commentForm: {
-  
-  display: "flex",
+    display: "flex",
     gap: "8px",
     marginTop: "4px",
   },
