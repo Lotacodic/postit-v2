@@ -10,11 +10,6 @@ interface PostsResponse {
   posts: Post[];
 }
 
-interface CreatePostResponse {
-  message: string;
-  post: Post;
-}
-
 export default function FeedPage() {
   const { username, userId, logout } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -58,7 +53,7 @@ export default function FeedPage() {
     setPosting(true);
 
     try {
-      const { data } = await client.post<CreatePostResponse>("/posts", {
+      await client.post("/posts", {
         postit: newPost,
       });
       setNewPost("");
