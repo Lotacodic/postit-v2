@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import client from "../api/client";
 import type { Post } from "../types";
 import PostCard from "../components/PostCard";
+import { getAllUsers } from "../api/users";
 
 interface PostsResponse {
   message: string;
@@ -21,6 +22,8 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Current user's followings — used to derive follow state on each post card.
+  const [followings, setFollowings] = useState<string[]>([]);
 
   const fetchPosts = async () => {
     try {
@@ -33,8 +36,20 @@ export default function FeedPage() {
     }
   };
 
+  const fetchFollowings = async () => {
+    if (!userId) return;
+    try {
+      const users = await getAllUsers();
+      const me = users.find((u) => u._id === userId);
+      if (me) setFollowings(me.followings);
+    } catch {
+      // Non-critical — follow buttons will default to unfollowed state.
+    }
+  };
+
   useEffect(() => {
     fetchPosts();
+    fetchFollowings();
   }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -62,6 +77,14 @@ export default function FeedPage() {
     } catch {
       setError("Failed to delete post.");
     }
+  };
+
+  const handleFollowChange = (targetUserId: string, isNowFollowing: boolean) => {
+    setFollowings((prev) =>
+      isNowFollowing
+        ? [...prev, targetUserId]
+        : prev.filter((id) => id !== targetUserId)
+    );
   };
 
   return (
@@ -103,7 +126,9 @@ export default function FeedPage() {
                 key={post._id}
                 post={post}
                 currentUserId={userId}
+                followings={followings}
                 onDelete={handleDelete}
+                onFollowChange={handleFollowChange}
               />
             ))}
           </div>
