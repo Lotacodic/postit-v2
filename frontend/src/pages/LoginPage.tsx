@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import client from "../api/client";
+import { validateEmail, validateRequired, type FieldErrors } from "../utils/validation";
 
 interface AuthResponse {
   message: string;
@@ -17,11 +19,19 @@ interface LoginForm {
   password: string;
 }
 
+const validators: Record<keyof LoginForm, (value: string) => string | undefined> = {
+  email: validateEmail,
+  password: (value) => validateRequired(value, "Password"),
+};
+
 export default function LoginPage() {
   const [form, setForm] = useState<LoginForm>({
     email: "",
     password: "",
   });
+
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors<LoginForm>>({});
+  const [touched, setTouched] = useState<Partial<Record<keyof LoginForm, boolean>>>({});
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,21 +40,46 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+
+    if (touched[name as keyof LoginForm]) {
+      const message = validators[name as keyof LoginForm](value);
+      setFieldErrors((prev) => ({ ...prev, [name]: message }));
+    }
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    const message = validators[name as keyof LoginForm](value);
+    setFieldErrors((prev) => ({ ...prev, [name]: message }));
+  };
+
+  const validateAll = (): boolean => {
+    const nextErrors: FieldErrors<LoginForm> = {
+      email: validators.email(form.email),
+      password: validators.password(form.password),
+    };
+    setFieldErrors(nextErrors);
+    setTouched({ email: true, password: true });
+    return Object.values(nextErrors).every((message) => !message);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
+    if (!validateAll()) return;
+
+    setLoading(true);
     try {
       const { data } = await client.post<AuthResponse>("/auth/login", form);
       login(data);
       navigate("/feed");
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.message ?? "Login failed. Please try again.");
       } else {
         setError("Login failed. Please try again.");
       }
@@ -61,7 +96,7 @@ export default function LoginPage() {
 
         {error && <p style={styles.error}>{error}</p>}
 
-        <form onSubmit={handleSubmit} style={styles.form}>
+        <form onSubmit={handleSubmit} style={styles.form} noValidate>
           <label style={styles.label}>Email</label>
           <input
             style={styles.input}
@@ -69,9 +104,12 @@ export default function LoginPage() {
             name="email"
             value={form.email}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="you@example.com"
-            required
           />
+          {touched.email && fieldErrors.email && (
+            <p style={styles.fieldError}>{fieldErrors.email}</p>
+          )}
 
           <label style={styles.label}>Password</label>
           <input
@@ -80,9 +118,12 @@ export default function LoginPage() {
             name="password"
             value={form.password}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="Your password"
-            required
           />
+          {touched.password && fieldErrors.password && (
+            <p style={styles.fieldError}>{fieldErrors.password}</p>
+          )}
 
           <button style={styles.button} type="submit" disabled={loading}>
             {loading ? "Logging in..." : "Log In"}
@@ -161,6 +202,11 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "8px",
     fontSize: "14px",
     marginBottom: "16px",
+  },
+  fieldError: {
+    color: "#dc2626",
+    fontSize: "13px",
+    margin: "-6px 0 0",
   },
   footer: {
     marginTop: "24px",
