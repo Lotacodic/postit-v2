@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import client from "../api/client";
+import {
+  validateUsername,
+  validateEmail,
+  validatePassword,
+  type FieldErrors,
+} from "../utils/validation";
 
 interface SignupResponse {
   message: string;
@@ -16,12 +23,23 @@ interface SignupForm {
   password: string;
 }
 
+// Maps each field to its validator so handleBlur/validateAll can stay generic
+// instead of a hardcoded if/else per field.
+const validators: Record<keyof SignupForm, (value: string) => string | undefined> = {
+  username: validateUsername,
+  email: validateEmail,
+  password: validatePassword,
+};
+
 export default function SignupPage() {
   const [form, setForm] = useState<SignupForm>({
     username: "",
     email: "",
     password: "",
   });
+
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors<SignupForm>>({});
+  const [touched, setTouched] = useState<Partial<Record<keyof SignupForm, boolean>>>({});
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,22 +48,52 @@ export default function SignupPage() {
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+
+    // Re-validate live once a field has been touched, so the error clears
+    // as soon as the user fixes it rather than waiting for another blur.
+    if (touched[name as keyof SignupForm]) {
+      const message = validators[name as keyof SignupForm](value);
+      setFieldErrors((prev) => ({ ...prev, [name]: message }));
+    }
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    const message = validators[name as keyof SignupForm](value);
+    setFieldErrors((prev) => ({ ...prev, [name]: message }));
+  };
+
+  // Runs every field's validator regardless of touched state, since a user
+  // can submit without ever blurring a field (e.g. paste + Enter).
+  const validateAll = (): boolean => {
+    const nextErrors: FieldErrors<SignupForm> = {
+      username: validators.username(form.username),
+      email: validators.email(form.email),
+      password: validators.password(form.password),
+    };
+    setFieldErrors(nextErrors);
+    setTouched({ username: true, email: true, password: true });
+    return Object.values(nextErrors).every((message) => !message);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
     setSuccess(null);
 
+    if (!validateAll()) return;
+
+    setLoading(true);
     try {
       const { data } = await client.post<SignupResponse>("/auth/signup", form);
       setSuccess(`Account created! Welcome, ${data.username}. Redirecting to login...`);
       setTimeout(() => navigate("/login"), 2000);
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.message ?? "Signup failed. Please try again.");
       } else {
         setError("Signup failed. Please try again.");
       }
@@ -63,7 +111,7 @@ export default function SignupPage() {
         {error && <p style={styles.error}>{error}</p>}
         {success && <p style={styles.success}>{success}</p>}
 
-        <form onSubmit={handleSubmit} style={styles.form}>
+        <form onSubmit={handleSubmit} style={styles.form} noValidate>
           <label style={styles.label}>Username</label>
           <input
             style={styles.input}
@@ -71,9 +119,12 @@ export default function SignupPage() {
             name="username"
             value={form.username}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="yourname"
-            required
           />
+          {touched.username && fieldErrors.username && (
+            <p style={styles.fieldError}>{fieldErrors.username}</p>
+          )}
 
           <label style={styles.label}>Email</label>
           <input
@@ -82,9 +133,12 @@ export default function SignupPage() {
             name="email"
             value={form.email}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="you@example.com"
-            required
           />
+          {touched.email && fieldErrors.email && (
+            <p style={styles.fieldError}>{fieldErrors.email}</p>
+          )}
 
           <label style={styles.label}>Password</label>
           <input
@@ -93,9 +147,12 @@ export default function SignupPage() {
             name="password"
             value={form.password}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="Min. 6 characters"
-            required
           />
+          {touched.password && fieldErrors.password && (
+            <p style={styles.fieldError}>{fieldErrors.password}</p>
+          )}
 
           <button style={styles.button} type="submit" disabled={loading}>
             {loading ? "Creating account..." : "Sign Up"}
@@ -174,6 +231,11 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "8px",
     fontSize: "14px",
     marginBottom: "16px",
+  },
+  fieldError: {
+    color: "#dc2626",
+    fontSize: "13px",
+    margin: "-6px 0 0",
   },
   success: {
     backgroundColor: "#d1fae5",
