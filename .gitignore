@@ -25,3 +25,4 @@ Thumbs.db
 .idea/
 *:Zone.Identifier
 *.save.*
+*.save
