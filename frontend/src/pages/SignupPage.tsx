@@ -43,7 +43,6 @@ export default function SignupPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const navigate = useNavigate();
 
@@ -82,15 +81,13 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccess(null);
 
     if (!validateAll()) return;
 
     setLoading(true);
     try {
-      const { data } = await client.post<SignupResponse>("/auth/signup", form);
-      setSuccess(`Account created! Welcome, ${data.username}. Redirecting to login...`);
-      setTimeout(() => navigate("/login"), 2000);
+      await client.post<SignupResponse>("/auth/signup", form);
+      navigate(`/check-email?email=${encodeURIComponent(form.email)}`);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.message ?? "Signup failed. Please try again.");
@@ -109,7 +106,6 @@ export default function SignupPage() {
         <p style={styles.subtitle}>Join Postit and share your world</p>
 
         {error && <p style={styles.error}>{error}</p>}
-        {success && <p style={styles.success}>{success}</p>}
 
         <form onSubmit={handleSubmit} style={styles.form} noValidate>
           <label style={styles.label}>Username</label>
