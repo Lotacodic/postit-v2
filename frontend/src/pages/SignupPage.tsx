@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import client from "../api/client";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 import {
   validateUsername,
   validateEmail,
@@ -155,6 +156,12 @@ export default function SignupPage() {
           </button>
         </form>
 
+       <div style={styles.divider}>
+          <span style={styles.dividerText}>or</span>
+        </div>
+
+        <GoogleSignInButton />
+
         <p style={styles.footer}>
           Already have an account?{" "}
           <a href="/login" style={styles.link}>Log in</a>
@@ -232,6 +239,19 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#dc2626",
     fontSize: "13px",
     margin: "-6px 0 0",
+  },
+ divider: {
+    display: "flex",
+    alignItems: "center",
+    textAlign: "center",
+    margin: "20px 0",
+    color: "#9ca3af",
+    fontSize: "13px",
+  },
+  dividerText: {
+    flex: 1,
+    borderTop: "1px solid #e5e7eb",
+    paddingTop: "8px",
   },
   success: {
     backgroundColor: "#d1fae5",

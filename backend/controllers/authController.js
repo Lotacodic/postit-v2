@@ -1,11 +1,14 @@
 const crypto = require("crypto");
 const { Resend } = require("resend");
+const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const generateToken = require("../utils/generateToken");
 const { getAvatarUrl } = require("../utils/avatarHelper");
+const generateUniqueUsername = require("../utils/generateUsername");
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Verification links expire after 24 hours.
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
@@ -131,4 +134,57 @@ const verifyEmail = async (req, res, next) => {
   }
 };
 
-module.exports = { signup, login, verifyEmail };
+// GOOGLE LOGIN / SIGNUP
+const googleLogin = async (req, res, next) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ message: "Google credential is required." });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+
+    if (!payload.email_verified) {
+      return res.status(400).json({ message: "Google account email is not verified." });
+    }
+
+    let user = await User.findOne({ email: payload.email, isDeleted: false });
+
+    // First time this Google account has signed in — create a local User.
+    // The random password is unusable for login; it exists only to satisfy
+    // the schema, since this account authenticates via Google going forward.
+    if (!user) {
+      const randomPassword = crypto.randomBytes(32).toString("hex");
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(randomPassword, salt);
+      const username = await generateUniqueUsername(payload.name);
+
+      user = new User({
+        username,
+        email: payload.email,
+        password: hashedPassword,
+        avatar: payload.picture || getAvatarUrl(username),
+        isVerified: true,
+      });
+      await user.save();
+    }
+
+    const token = generateToken(user._id);
+    return res.status(200).json({
+      message: "Login successful.",
+      token,
+      userId: user._id,
+      username: user.username,
+      email: user.email,
+      avatar: user.avatar,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { signup, login, verifyEmail, googleLogin };
