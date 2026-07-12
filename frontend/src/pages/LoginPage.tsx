@@ -4,6 +4,7 @@ import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import client from "../api/client";
 import { validateEmail, validateRequired, type FieldErrors } from "../utils/validation";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 
 interface AuthResponse {
   message: string;
@@ -130,6 +131,12 @@ export default function LoginPage() {
           </button>
         </form>
 
+	 <div style={styles.divider}>
+          <span style={styles.dividerText}>or</span>
+        </div>
+
+        <GoogleSignInButton />
+
         <p style={styles.footer}>
           Don't have an account?{" "}
           <a href="/signup" style={styles.link}>Sign up</a>
@@ -207,6 +214,19 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#dc2626",
     fontSize: "13px",
     margin: "-6px 0 0",
+  },
+  divider: {
+    display: "flex",
+    alignItems: "center",
+    textAlign: "center",
+    margin: "20px 0",
+    color: "#9ca3af",
+    fontSize: "13px",
+  },
+  dividerText: {
+    flex: 1,
+    borderTop: "1px solid #e5e7eb",
+    paddingTop: "8px",
   },
   footer: {
     marginTop: "24px",
