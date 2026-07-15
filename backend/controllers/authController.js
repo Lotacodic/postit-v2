@@ -13,6 +13,10 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 // Verification links expire after 24 hours.
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
+// Password reset links are shorter-lived than verification links, since
+// a leaked reset link is a more immediate account-takeover risk.
+const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
+
 async function sendVerificationEmail(email, rawToken) {
   const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${rawToken}`;
 
@@ -24,6 +28,22 @@ async function sendVerificationEmail(email, rawToken) {
       <p>Welcome to Postit!</p>
       <p>Click the link below to verify your email address. This link expires in 24 hours.</p>
       <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+    `,
+  });
+}
+
+async function sendPasswordResetEmail(email, rawToken) {
+  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${rawToken}`;
+
+  await resend.emails.send({
+    from: "onboarding@resend.dev",
+    to: email,
+    subject: "Reset your Postit password",
+    html: `
+      <p>We received a request to reset your Postit password.</p>
+      <p>Click the link below to choose a new password. This link expires in 15 minutes.</p>
+      <p><a href="${resetUrl}">${resetUrl}</a></p>
+      <p>If you didn't request this, you can safely ignore this email.</p>
     `,
   });
 }
@@ -187,4 +207,67 @@ const googleLogin = async (req, res, next) => {
   }
 };
 
-module.exports = { signup, login, verifyEmail, googleLogin };
+// FORGOT PASSWORD
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email, isDeleted: false });
+
+    // Always return the same response whether or not the user exists —
+    // otherwise this endpoint becomes a way to check which emails are
+    // registered on the platform.
+    if (user) {
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+      user.resetPasswordToken = hashedToken;
+      user.resetPasswordTokenExpires = Date.now() + RESET_TOKEN_TTL_MS;
+      await user.save();
+
+      try {
+        await sendPasswordResetEmail(user.email, rawToken);
+      } catch (emailErr) {
+        console.error("Failed to send password reset email:", emailErr);
+      }
+    }
+
+    return res.status(200).json({
+      message: "If an account with that email exists, a password reset link has been sent.",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// RESET PASSWORD
+const resetPassword = async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: "Token and new password are required." });
+    }
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordTokenExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired reset link." });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordTokenExpires = undefined;
+    await user.save();
+
+    return res.status(200).json({ message: "Password reset successfully." });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { signup, login, verifyEmail, googleLogin, forgotPassword, resetPassword };
