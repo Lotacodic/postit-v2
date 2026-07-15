@@ -125,6 +125,9 @@ export default function LoginPage() {
           {touched.password && fieldErrors.password && (
             <p style={styles.fieldError}>{fieldErrors.password}</p>
           )}
+	  <a href="/forgot-password" style={styles.forgotLink}>
+            Forgot password?
+          </a>
 
           <button style={styles.button} type="submit" disabled={loading}>
             {loading ? "Logging in..." : "Log In"}
@@ -238,5 +241,13 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#BA7517",
     fontWeight: 600,
     textDecoration: "none",
+  },
+  forgotLink: {
+    alignSelf: "flex-end",
+    fontSize: "13px",
+    color: "#BA7517",
+    fontWeight: 600,
+    textDecoration: "none",
+    margin: "-4px 0 4px",
   },
 };

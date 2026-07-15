@@ -8,6 +8,8 @@ const LoginPage = lazy(() => import("./pages/LoginPage"));
 const FeedPage = lazy(() => import("./pages/FeedPage"));
 const CheckEmailPage = lazy(() => import("./pages/CheckEmailPage"));
 const VerifyEmailPage = lazy(() => import("./pages/VerifyEmailPage"));
+const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 
 export default function App() {
   return (
@@ -19,6 +21,8 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/check-email" element={<CheckEmailPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+	  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* Protected route — redirects to /login if not authenticated */}
           <Route
