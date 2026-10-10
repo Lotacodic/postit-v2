@@ -63,14 +63,13 @@ const signup = async (req, res, next) => {
 
     const rawToken = crypto.randomBytes(32).toString("hex");
     const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
-
+ 
     const newUser = new User({
       username,
       email,
       password: hashedPassword,
       avatar: avatarUrl,
-      verificationToken: hashedToken,
-      verificationTokenExpires: Date.now() + VERIFICATION_TOKEN_TTL_MS,
+      isVerified: true,
     });
     const savedUser = await newUser.save();
 
@@ -107,9 +106,7 @@ const login = async (req, res, next) => {
     if (!validPassword) {
       return res.status(400).json({ message: "Invalid credentials." });
     }
-    if (!user.isVerified) {
-      return res.status(403).json({ message: "Please verify your email before logging in." });
-    }
+    
     const token = generateToken(user._id);
     return res.status(200).json({
       message: "Login successful.",
