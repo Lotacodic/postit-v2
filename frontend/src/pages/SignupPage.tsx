@@ -88,7 +88,7 @@ export default function SignupPage() {
     setLoading(true);
     try {
       await client.post<SignupResponse>("/auth/signup", form);
-      navigate(`/check-email?email=${encodeURIComponent(form.email)}`);
+      navigate("/login");
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.message ?? "Signup failed. Please try again.");
